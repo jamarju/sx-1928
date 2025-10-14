@@ -25,23 +25,22 @@ static unsigned long last_update_time = 0; // Last update timestamp in milliseco
 
 // Steering motor constants
 static const uint8_t STEER_CENTER_VALUE = 128;     // Center position value
-static const uint8_t STEER_DEADZONE = 32;          // Deadzone radius around center
-static const uint8_t STEER_FULL_PWM = 180;         // Full power PWM (driver doesn't handle 255)
+static const uint8_t STEER_DEADZONE = 16;          // Deadzone radius around center
+static const uint8_t STEER_FULL_PWM = 254;         // Full power PWM (driver doesn't handle 255)
 static const uint8_t STEER_HOLD_PWM = 13;          // Hold power PWM (~5%)
 static const unsigned long STEER_HOLD_TIME = 2000; // Time before switching to hold (ms)
 
+// Start of steering
+static unsigned long steering_start_time = 0;
+
 // Steering state machine
-enum SteeringState {
-  STEER_CENTER,        // Centered, no steering
-  STEER_RIGHT,         // Turning right at full power
-  STEER_RIGHT_HOLD,    // Holding right at endstop with low power
-  STEER_LEFT,          // Turning left at full power
-  STEER_LEFT_HOLD,     // Holding left at endstop with low power
+enum SteeringStickPosition {
+  STEER_CENTER,
+  STEER_LEFT,
+  STEER_RIGHT,
 };
 
-// Steering state variables
-static SteeringState steer_state = STEER_CENTER;
-static unsigned long steer_state_entry_time = 0;
+static SteeringStickPosition prev_steer_state = STEER_CENTER;
 
 void setup_motors() {
   // Configure drive motor control pins
@@ -73,15 +72,8 @@ void setup_motors() {
   pinMode(B2_PIN, OUTPUT);
   pinMode(PB_PWM_PIN, OUTPUT);
   
-  // Initialize steering to safe state (brake: B1=0, B2=0, PWM=0)
-  digitalWrite(B1_PIN, LOW);
-  digitalWrite(B2_PIN, LOW);
-  
-  // PWM for steering already configured above with Timer2 OC2B
-  
-  // Initialize steering state
-  steer_state = STEER_CENTER;
-  steer_state_entry_time = millis();
+  // Initialize steering to safe state (high-Z mode: B1=1, B2=1, PWM=255)
+  disable_steering();
 }
 
 void ramp_motors(int16_t target_speed) {
@@ -136,15 +128,9 @@ uint16_t get_ramped_speed() {
 }
 
 void disable_motors() {
-  OCR2A = 255;
   digitalWrite(A1_PIN, HIGH);
   digitalWrite(A2_PIN, HIGH);
-}
-
-void disable_steering() {
-  OCR2B = 255;
-  digitalWrite(B1_PIN, HIGH);
-  digitalWrite(B2_PIN, HIGH);
+  OCR2A = 255;
 }
 
 void update_motors(int16_t speed) {
@@ -170,109 +156,61 @@ void update_motors(int16_t speed) {
   }
 }
 
+void steer_right(uint8_t pwm_duty) {
+  digitalWrite(B1_PIN, HIGH);
+  digitalWrite(B2_PIN, LOW);
+  OCR2B = pwm_duty;
+}
+
+void steer_left(uint8_t pwm_duty) {
+  digitalWrite(B1_PIN, LOW);
+  digitalWrite(B2_PIN, HIGH);
+  OCR2B = pwm_duty;
+}
+
+void disable_steering() {
+  digitalWrite(B1_PIN, HIGH);
+  digitalWrite(B2_PIN, HIGH);
+  OCR2B = 255;
+}
+
+
 void update_steering(uint8_t steering) {
-  unsigned long now = millis();
-  unsigned long time_in_state = now - steer_state_entry_time;
-  
   // Calculate deadzone boundaries
-  uint8_t center_low = STEER_CENTER_VALUE - STEER_DEADZONE;   // 96
-  uint8_t center_high = STEER_CENTER_VALUE + STEER_DEADZONE;  // 160
-  
-  // Determine desired direction based on steering input
-  bool want_center = (steering >= center_low && steering <= center_high);
-  bool want_right = (steering > center_high);
-  bool want_left = (steering < center_low);
-  
-  // State machine transitions
-  SteeringState new_state = steer_state;
-  
-  switch (steer_state) {
-    case STEER_CENTER:
-      if (want_right) {
-        new_state = STEER_RIGHT;
-      } else if (want_left) {
-        new_state = STEER_LEFT;
-      }
-      break;
-      
-    case STEER_RIGHT:
-      if (want_center) {
-        new_state = STEER_CENTER;
-      } else if (want_left) {
-        new_state = STEER_LEFT;
-      } else if (time_in_state >= STEER_HOLD_TIME) {
-        new_state = STEER_RIGHT_HOLD;
-      }
-      break;
-      
-    case STEER_RIGHT_HOLD:
-      if (want_center) {
-        new_state = STEER_CENTER;
-      } else if (want_left) {
-        new_state = STEER_LEFT;
-      }
-      break;
-      
-    case STEER_LEFT:
-      if (want_center) {
-        new_state = STEER_CENTER;
-      } else if (want_right) {
-        new_state = STEER_RIGHT;
-      } else if (time_in_state >= STEER_HOLD_TIME) {
-        new_state = STEER_LEFT_HOLD;
-      }
-      break;
-      
-    case STEER_LEFT_HOLD:
-      if (want_center) {
-        new_state = STEER_CENTER;
-      } else if (want_right) {
-        new_state = STEER_RIGHT;
-      }
-      break;
+  uint8_t center_low = STEER_CENTER_VALUE - STEER_DEADZONE;
+  uint8_t center_high = STEER_CENTER_VALUE + STEER_DEADZONE;
+  SteeringStickPosition new_steer_state;
+
+  if (steering < center_low) {
+    new_steer_state = STEER_LEFT;
+  } else if (steering >= center_high) {
+    new_steer_state = STEER_RIGHT;
+  } else {
+    new_steer_state = STEER_CENTER;
   }
-  
-  // Update state if changed
-  if (new_state != steer_state) {
-    steer_state = new_state;
-    steer_state_entry_time = now;
+
+  if (new_steer_state != prev_steer_state) {
+    prev_steer_state = new_steer_state;
+    steering_start_time = millis();
   }
-  
-  // Apply motor control based on current state
-  switch (steer_state) {
+
+  switch (new_steer_state) {
     case STEER_CENTER:
-      // Brake: B1=0, B2=0
-      digitalWrite(B1_PIN, HIGH);
-      digitalWrite(B2_PIN, HIGH);
-      OCR2B = 255;
+      disable_steering();
       break;
-      
-    case STEER_RIGHT:
-      // Right at full power: B1=1, B2=0
-      digitalWrite(B1_PIN, HIGH);
-      digitalWrite(B2_PIN, LOW);
-      OCR2B = STEER_FULL_PWM;
-      break;
-      
-    case STEER_RIGHT_HOLD:
-      // Right at hold power: B1=1, B2=0
-      digitalWrite(B1_PIN, HIGH);
-      digitalWrite(B2_PIN, LOW);
-      OCR2B = STEER_HOLD_PWM;
-      break;
-      
     case STEER_LEFT:
-      // Left at full power: B1=0, B2=1
-      digitalWrite(B1_PIN, LOW);
-      digitalWrite(B2_PIN, HIGH);
-      OCR2B = STEER_FULL_PWM;
+      if (millis() - steering_start_time < STEER_HOLD_TIME) {
+        steer_left(map(steering, center_low, 0, STEER_HOLD_PWM, STEER_FULL_PWM));
+      } else {
+        steer_left(STEER_HOLD_PWM);
+      }
       break;
-      
-    case STEER_LEFT_HOLD:
-      // Left at hold power: B1=0, B2=1
-      digitalWrite(B1_PIN, LOW);
-      digitalWrite(B2_PIN, HIGH);
-      OCR2B = STEER_HOLD_PWM;
+    case STEER_RIGHT:
+      if (millis() - steering_start_time < STEER_HOLD_TIME) {
+        steer_right(map(steering, center_high, 255, STEER_HOLD_PWM, STEER_FULL_PWM));
+      } else {
+        steer_right(STEER_HOLD_PWM);
+      }
       break;
   }
 }

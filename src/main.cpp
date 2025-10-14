@@ -10,10 +10,6 @@ static const uint8_t PIN_REV_PEDAL = 26;    // LOW = REV + pedal pressed
 static const uint8_t PIN_FWD_PEDAL = 27;    // LOW = FWD + pedal pressed
 static const uint8_t PIN_SPEED_LOW = 28;     // LOW = HI speed, HIGH = LO speed
 
-// Kid control speed settings
-static const int16_t SPEED_HI = 150;
-static const int16_t SPEED_LO = 75;
-
 // Global state (non-static so debug.cpp can access)
 ControlMode control_mode = ARMING_REMOTE_CONTROL;  // Start in remote arming
 static bool last_takeover_state = false;           // Track takeover changes
@@ -53,8 +49,8 @@ void loop() {
   uint8_t throttle = get_throttle();
   bool takeover_active = get_takeover();
   bool reverse_switch = get_reverse();
-  int16_t throttle_sign = reverse_switch ? -1 : 1;
   uint8_t ramped_speed = get_ramped_speed();
+  int16_t max_throttle = get_max_throttle();
   
   bool rev_pedal = !digitalRead(PIN_REV_PEDAL);  // Active LOW
   bool fwd_pedal = !digitalRead(PIN_FWD_PEDAL);  // Active LOW
@@ -92,20 +88,33 @@ void loop() {
         control_mode = KID_CONTROL;
       }
       break;
-    case REMOTE_CONTROL:
+    case REMOTE_CONTROL: {
+      int16_t throttle_sign = reverse_switch ? -1 : 1;
       ramp_motors(throttle * throttle_sign);
       update_steering(steering);
       break;
+    }
     case KID_CONTROL:
       disable_steering();
+      Serial.print("fwd_pedal: ");
+      Serial.print(fwd_pedal);
+      Serial.print(" rev_pedal: ");
+      Serial.print(rev_pedal);
+      Serial.print(" speed_low: ");
+      Serial.print(speed_low);
+      Serial.print(" max_throttle: ");
+      Serial.print(max_throttle);
+      Serial.print(" ramped_speed: ");
+      Serial.print(ramped_speed);
+      Serial.println();
       if (!fwd_pedal && !rev_pedal) ramp_motors(0);
-      else if (fwd_pedal && speed_low) ramp_motors(SPEED_LO);
-      else if (fwd_pedal && !speed_low) ramp_motors(SPEED_HI);
-      else if (!fwd_pedal && speed_low) ramp_motors(-SPEED_LO);
-      else if (!fwd_pedal && !speed_low) ramp_motors(-SPEED_HI);
+      else if (fwd_pedal && speed_low) ramp_motors(max_throttle / 2);
+      else if (fwd_pedal && !speed_low) ramp_motors(max_throttle);
+      else if (!fwd_pedal && speed_low) ramp_motors(-max_throttle / 2);
+      else if (!fwd_pedal && !speed_low) ramp_motors(-max_throttle);
       break;
   }
   
   // Debug output
-  print_debug_status();
+  //print_debug_status();
 }
