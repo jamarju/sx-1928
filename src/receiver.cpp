@@ -240,7 +240,7 @@ bool get_takeover() {
   if (!is_takeover_active()) {
     return false;  // Return takeover disabled when no signal
   }
-  return takeover_us <= 1500;  // true if <=1500us, false if >1500us
+  return takeover_us < 1600;  // true if <1600us (RC mode), false if >=1600us (kids mode) - 100us margin includes center
 }
 
 // Channel status (returns true if signal present, false if N/A)
