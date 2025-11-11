@@ -15,7 +15,7 @@ static const uint8_t PB_PWM_PIN = 9;         // Timer2 OC2B - PWM steering contr
 
 // Drive motor ramping constants (units per second)
 // RAMP_UP_RATE: 0 to 255 in 5.0 seconds -> 255 / 5.0 = 51.0 units/sec
-// RAMP_DN_RATE: 255 to 0 in 2.5 seconds -> 255 / 2.5 = 102.0 units/sec
+// RAMP_DN_RATE: 255 to 0 in 1.0 seconds -> 255 / 1.0 = 255.0 units/sec
 static const float RAMP_UP_RATE = 51.0;
 static const float RAMP_DN_RATE = 255.0;
 

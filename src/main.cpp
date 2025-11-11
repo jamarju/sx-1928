@@ -4,6 +4,7 @@
 #include "motors.h"
 #include "debug.h"
 #include "main.h"
+#include "version.h"
 
 // Kid control hardware pins (with internal pullups)
 static const uint8_t PIN_REV_PEDAL = 26;    // LOW = REV + pedal pressed
@@ -25,6 +26,11 @@ void setup() {
   // Initialize debug serial output
   setup_debug();
   
+  // Print firmware version
+  Serial.print(FPSTR(MOSTERRAK_LOGO));
+  Serial.println(FPSTR(VERSION_INFO_STR));
+  Serial.println(F("Press 'h' for help"));
+  
   // Initialize the PWM receiver system
   setup_receiver();
   
@@ -43,6 +49,9 @@ void setup() {
 
 void loop() {
   wdt_reset();  // Pet the watchdog
+  
+  // Process debug commands
+  process_debug_input();
   
   // Read all inputs
   uint8_t steering = get_steering();
@@ -96,17 +105,6 @@ void loop() {
     }
     case KID_CONTROL:
       disable_steering();
-      Serial.print("fwd_pedal: ");
-      Serial.print(fwd_pedal);
-      Serial.print(" rev_pedal: ");
-      Serial.print(rev_pedal);
-      Serial.print(" speed_low: ");
-      Serial.print(speed_low);
-      Serial.print(" max_throttle: ");
-      Serial.print(max_throttle);
-      Serial.print(" ramped_speed: ");
-      Serial.print(ramped_speed);
-      Serial.println();
       if (!fwd_pedal && !rev_pedal) ramp_motors(0);
       else if (fwd_pedal && speed_low) ramp_motors(max_throttle / 2);
       else if (fwd_pedal && !speed_low) ramp_motors(max_throttle);
@@ -116,5 +114,5 @@ void loop() {
   }
   
   // Debug output
-  //print_debug_status();
+  print_debug_status();
 }
