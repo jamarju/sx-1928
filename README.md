@@ -2,6 +2,8 @@
 
 Control board replacement for the SX-1928 ride-on car, aka "Clash" aka "Challenger" based on a **Futaba R617FS** and a **Robotdyn Mega 2560 Pro** Arduino board.
 
+![SX-1928](doc/img/sx1928.jpg)
+
 # Hardware Setup
 
 - Receiver: Futaba R617FS (7-channel PWM output)
