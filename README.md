@@ -1,8 +1,23 @@
-# SX-1928 mod
+# SX-1928 alternative controller
+
+![SX-1928](doc/img/sx1928.jpg)
 
 Control board replacement for the SX-1928 ride-on car, aka "Clash" aka "Challenger" based on a **Futaba R617FS** and a **Robotdyn Mega 2560 Pro** Arduino board.
 
-![SX-1928](doc/img/sx1928.jpg)
+The original SX-1928 controller board had several shortcomings:
+
+- **Limited speed control**: Only 2 fixed speed settings via on-board switch (or 3 from the RC transmitter)
+- **Unsafe downhill speed**: Even the slowest setting is too fast on slopes
+- **Sudden stops**: Car comes to a full stop too abruptly throwing children forward when releasing the pedal or the controller's throttle.
+- **Poor steering control**: Basic on/off steering with no proportional control
+
+I replaced the original controller with an Arduino Mega 2560 Pro and a Futaba R617FS receiver, and rewrote the firmware to fix the above issues and enhance the overall experience. Here are the main features:
+
+- Fine-grained speed and steering control using the transmitter's analog sticks.
+- Configurable acceleration/deceleration profiles prevent sudden speed changes.
+- Kid/RC mode switching: the car can be controlled by the transmitter or by the kids using the pedal.
+- Adjustable maximum pedal speed via one of the transmitter's analog knobs.
+- RC arming procedure prevents the car from moving unless authorized by the parent.
 
 # Hardware Setup
 
