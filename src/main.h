@@ -5,6 +5,7 @@
 
 // Control mode state machine
 enum ControlMode {
+  WAIT_TX,                    // Waiting for TX to be powered on
   ARMING_REMOTE_CONTROL,      // Arming for remote control mode
   ARMING_KID_CONTROL,         // Arming for kid control mode
   SWITCHING_TO_REMOTE_CONTROL,// Transitioning to remote control

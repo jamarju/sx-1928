@@ -129,13 +129,13 @@ void setup_receiver() {
   pinMode(TAKEOVER_PIN, INPUT);
   pinMode(MAX_THROTTLE_PIN, INPUT);
   
-  // Initialize activity timestamps
-  unsigned long now = millis();
-  steering_last_activity = now;
-  throttle_last_activity = now;
-  reverse_last_activity = now;
-  takeover_last_activity = now;
-  max_throttle_last_activity = now;
+  // Initialize activity timestamps to expired state (prevents false positives at boot)
+  unsigned long expired = millis() - PWM_TIMEOUT_MS;
+  steering_last_activity = expired;
+  throttle_last_activity = expired;
+  reverse_last_activity = expired;
+  takeover_last_activity = expired;
+  max_throttle_last_activity = expired;
   
   // Timer1: Reference timer for external interrupts (prescaler 8)
   TCCR1A = 0;
@@ -219,17 +219,11 @@ uint8_t get_steering() {
 }
 
 uint8_t get_throttle() {
-  if (!is_throttle_active()) {
-    return 0;  // Return throttle 0 when no signal
-  }
   return safe_map_to_255(throttle_us, 1100, 1900, true);  // Inverted: 1100μs→255, 1900μs→0
 }
 
 bool get_reverse() {
-  if (!is_reverse_active()) {
-    return false;  // Return forward direction when no signal
-  }
-  return reverse_us > 1500;  // true if >1500us, false if <=1500us (reversed behavior)
+  return reverse_us > 1500;  // true if >1500us, false if <=1500us
 }
 
 uint8_t get_max_throttle() {
@@ -237,50 +231,34 @@ uint8_t get_max_throttle() {
 }
 
 bool get_takeover() {
-  if (!is_takeover_active()) {
-    return false;  // Return takeover disabled when no signal
+  return takeover_us < 1600;  // true if <1600us (RC mode), false if >=1600us (kids mode)
+}
+
+// TX status - returns true only if ALL channels are active
+bool is_tx_on() {
+  unsigned long now = millis();
+  noInterrupts();
+  bool all_active = (now - steering_last_activity) < PWM_TIMEOUT_MS &&
+                    (now - throttle_last_activity) < PWM_TIMEOUT_MS &&
+                    (now - reverse_last_activity) < PWM_TIMEOUT_MS &&
+                    (now - takeover_last_activity) < PWM_TIMEOUT_MS &&
+                    (now - max_throttle_last_activity) < PWM_TIMEOUT_MS;
+  
+  // Refresh individual timestamps when inactive to handle millis() rollover
+  if (!all_active) {
+    unsigned long expired = now - PWM_TIMEOUT_MS;
+    if ((now - steering_last_activity) >= PWM_TIMEOUT_MS)
+      steering_last_activity = expired;
+    if ((now - throttle_last_activity) >= PWM_TIMEOUT_MS)
+      throttle_last_activity = expired;
+    if ((now - reverse_last_activity) >= PWM_TIMEOUT_MS)
+      reverse_last_activity = expired;
+    if ((now - takeover_last_activity) >= PWM_TIMEOUT_MS)
+      takeover_last_activity = expired;
+    if ((now - max_throttle_last_activity) >= PWM_TIMEOUT_MS)
+      max_throttle_last_activity = expired;
   }
-  return takeover_us < 1600;  // true if <1600us (RC mode), false if >=1600us (kids mode) - 100us margin includes center
-}
-
-// Channel status (returns true if signal present, false if N/A)
-bool is_steering_active() {
-  unsigned long now = millis();
-  noInterrupts();
-  bool active = (now - steering_last_activity) <= PWM_TIMEOUT_MS;
   interrupts();
-  return active;
-}
-
-bool is_throttle_active() {
-  unsigned long now = millis();
-  noInterrupts();
-  bool active = (now - throttle_last_activity) <= PWM_TIMEOUT_MS;
-  interrupts();
-  return active;
-}
-
-bool is_reverse_active() {
-  unsigned long now = millis();
-  noInterrupts();
-  bool active = (now - reverse_last_activity) <= PWM_TIMEOUT_MS;
-  interrupts();
-  return active;
-}
-
-bool is_max_throttle_active() {
-  unsigned long now = millis();
-  noInterrupts();
-  bool active = (now - max_throttle_last_activity) <= PWM_TIMEOUT_MS;
-  interrupts();
-  return active;
-}
-
-bool is_takeover_active() {
-  unsigned long now = millis();
-  noInterrupts();
-  bool active = (now - takeover_last_activity) <= PWM_TIMEOUT_MS;
-  interrupts();
-  return active;
+  return all_active;
 }
 

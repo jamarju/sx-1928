@@ -20,12 +20,8 @@ bool get_reverse();             // true if >1500us, false if <=1500us
 uint8_t get_max_throttle();     // 0-255 (1100-1900us mapped)
 bool get_takeover();            // true if <1600us (RC mode), false if >=1600us (kids mode)
 
-// Channel status (returns true if signal present, false if N/A)
-bool is_steering_active();
-bool is_throttle_active();
-bool is_reverse_active();
-bool is_max_throttle_active();
-bool is_takeover_active();
+// TX status - returns true only if ALL channels are active
+bool is_tx_on();
 
 #endif // RECEIVER_H
 

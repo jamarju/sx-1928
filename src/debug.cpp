@@ -107,6 +107,7 @@ void print_debug_status() {
   if (debug_flags.control_mode) {
     const char* mode_str = "UNKNOWN";
     switch (control_mode) {
+      case WAIT_TX: mode_str = "WAIT_TX"; break;
       case ARMING_REMOTE_CONTROL: mode_str = "ARM_RC "; break;
       case ARMING_KID_CONTROL: mode_str = "ARM_KID"; break;
       case SWITCHING_TO_REMOTE_CONTROL: mode_str = "SW_RC  "; break;
@@ -145,13 +146,16 @@ void print_debug_status() {
     need_separator = true;
   }
   
+  // TX status and channels
+  bool tx_on = is_tx_on();
+  
   // CH1 - Steering
   if (debug_flags.ch1) {
     if (need_separator) Serial.print(F(" | "));
-    if (is_steering_active()) {
+    if (tx_on) {
       sprintf(buf, "1:STEER %4uus (%3d)", get_raw_steering(), get_steering());
     } else {
-      sprintf(buf, "1:STEER  N/A        ");
+      sprintf(buf, "1:STEER %4uus (N/A)", get_raw_steering());
     }
     Serial.print(buf);
     need_separator = true;
@@ -160,10 +164,10 @@ void print_debug_status() {
   // CH3 - Throttle
   if (debug_flags.ch3) {
     if (need_separator) Serial.print(F(" | "));
-    if (is_throttle_active()) {
+    if (tx_on) {
       sprintf(buf, "3:THROT %4uus (%3d)", get_raw_throttle(), get_throttle());
     } else {
-      sprintf(buf, "3:THROT  N/A        ");
+      sprintf(buf, "3:THROT %4uus (N/A)", get_raw_throttle());
     }
     Serial.print(buf);
     need_separator = true;
@@ -172,10 +176,10 @@ void print_debug_status() {
   // CH5 - Reverse
   if (debug_flags.ch5) {
     if (need_separator) Serial.print(F(" | "));
-    if (is_reverse_active()) {
+    if (tx_on) {
       sprintf(buf, "5:REV   %4uus (%s)", get_raw_reverse(), get_reverse() ? "ON " : "OFF");
     } else {
-      sprintf(buf, "5:REV    N/A        ");
+      sprintf(buf, "5:REV   %4uus (N/A)", get_raw_reverse());
     }
     Serial.print(buf);
     need_separator = true;
@@ -184,10 +188,10 @@ void print_debug_status() {
   // CH6 - Max Throttle
   if (debug_flags.ch6) {
     if (need_separator) Serial.print(F(" | "));
-    if (is_max_throttle_active()) {
+    if (tx_on) {
       sprintf(buf, "6:MAXTH %4uus (%3d)", get_raw_max_throttle(), get_max_throttle());
     } else {
-      sprintf(buf, "6:MAXTH  N/A        ");
+      sprintf(buf, "6:MAXTH %4uus (N/A)", get_raw_max_throttle());
     }
     Serial.print(buf);
     need_separator = true;
@@ -196,10 +200,10 @@ void print_debug_status() {
   // CH7 - Takeover
   if (debug_flags.ch7) {
     if (need_separator) Serial.print(F(" | "));
-    if (is_takeover_active()) {
+    if (tx_on) {
       sprintf(buf, "7:TAKEO %4uus (%s)", get_raw_takeover(), get_takeover() ? "RC " : "KID");
     } else {
-      sprintf(buf, "7:TAKEO  N/A        ");
+      sprintf(buf, "7:TAKEO %4uus (N/A)", get_raw_takeover());
     }
     Serial.print(buf);
   }
