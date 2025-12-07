@@ -1,0 +1,4 @@
+(sym_lib_table
+  (version 7)
+  (lib (name "mosterrak")(type "KiCad")(uri "${KIPRJMOD}/mosterrak.kicad_sym")(options "")(descr ""))
+)
