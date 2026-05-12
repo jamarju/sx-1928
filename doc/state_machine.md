@@ -39,12 +39,12 @@ stateDiagram-v2
 ## State Descriptions
 
 ### WAIT_TX
-- **Purpose**: Initial safe state, waiting for TX to be powered on. Motors are stopped and system is waiting for all 5 PWM channels to become active.
+- **Purpose**: Initial safe state, waiting for TX to be powered on. Motors are stopped and system is waiting for all 4 PWM channels to become active.
 - **Previous state/s**: 
   - Boot (initial state)
   - Any state (when TX signal is lost)
 - **Transitions**:
-  - TX powered on (all 5 channels active) → `ARMING_REMOTE_CONTROL`
+  - TX powered on (all 4 channels active) → `ARMING_REMOTE_CONTROL`
 
 ### ARMING_REMOTE_CONTROL
 - **Purpose**: Safety check before entering RC control mode. System waits for operator to set safe input conditions (throttle at zero, no reverse) before allowing RC control. Car always boots into this mode for safety.
@@ -96,7 +96,7 @@ stateDiagram-v2
   - TX signal lost → `WAIT_TX`
 
 ### KID_CONTROL
-- **Purpose**: Active kid control operation. Kid has control via pedals (FWD/REV) and speed selector. Steering is controlled by RC transmitter (allows parent to steer).
+- **Purpose**: Active kid control operation. Kid has control via pedals (FWD/REV) and speed selector. Steering is controlled by RC transmitter (allows parent to steer). The RC throttle stick sets the maximum pedal speed, so pulling the throttle down commands zero speed.
 - **Previous state/s**:
   - `ARMING_KID_CONTROL` (successfully armed)
 - **Transitions**:

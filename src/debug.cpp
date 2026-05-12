@@ -17,9 +17,8 @@ static struct {
   uint8_t ch1 : 1;
   uint8_t ch3 : 1;
   uint8_t ch5 : 1;
-  uint8_t ch6 : 1;
   uint8_t ch7 : 1;
-} debug_flags = {0, 0, 0, 0, 0, 0, 0, 0};
+} debug_flags = {0, 0, 0, 0, 0, 0, 0};
 
 // Master pause flag
 static bool debug_paused = false;
@@ -54,7 +53,6 @@ void print_help() {
     "1 - Toggle CH1 (steer) receiver info\n"
     "3 - Toggle CH3 (throttle) receiver info\n"
     "5 - Toggle CH5 (reverse) receiver info\n"
-    "6 - Toggle CH6 (max throttle) receiver info\n"
     "7 - Toggle CH7 (takeover) receiver info\n"
     "SPACE - Pause/resume debug output\n"
     "h - Show this help\n"
@@ -72,7 +70,6 @@ void process_debug_input() {
     case '1': debug_flags.ch1 = !debug_flags.ch1; break;
     case '3': debug_flags.ch3 = !debug_flags.ch3; break;
     case '5': debug_flags.ch5 = !debug_flags.ch5; break;
-    case '6': debug_flags.ch6 = !debug_flags.ch6; break;
     case '7': debug_flags.ch7 = !debug_flags.ch7; break;
     case ' ': debug_paused = !debug_paused; break;
     case 'h':
@@ -96,7 +93,7 @@ void print_debug_status() {
   // Check if any debug output is enabled
   if (!debug_flags.control_mode && !debug_flags.throttle && !debug_flags.steering &&
       !debug_flags.ch1 && !debug_flags.ch3 && !debug_flags.ch5 && 
-      !debug_flags.ch6 && !debug_flags.ch7) {
+      !debug_flags.ch7) {
     return;
   }
   
@@ -180,18 +177,6 @@ void print_debug_status() {
       sprintf(buf, "5:REV   %4uus (%s)", get_raw_reverse(), get_reverse() ? "ON " : "OFF");
     } else {
       sprintf(buf, "5:REV   %4uus (N/A)", get_raw_reverse());
-    }
-    Serial.print(buf);
-    need_separator = true;
-  }
-  
-  // CH6 - Max Throttle
-  if (debug_flags.ch6) {
-    if (need_separator) Serial.print(F(" | "));
-    if (tx_on) {
-      sprintf(buf, "6:MAXTH %4uus (%3d)", get_raw_max_throttle(), get_max_throttle());
-    } else {
-      sprintf(buf, "6:MAXTH %4uus (N/A)", get_raw_max_throttle());
     }
     Serial.print(buf);
     need_separator = true;

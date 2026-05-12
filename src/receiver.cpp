@@ -28,13 +28,9 @@ volatile unsigned long reverse_last_activity = 0;
 volatile uint16_t takeover_t_rise = 0;
 volatile unsigned long takeover_last_activity = 0;
 
-// Max Throttle: External interrupt (pin 18)
-volatile uint16_t max_throttle_t_rise = 0;
-volatile unsigned long max_throttle_last_activity = 0;
-
 // Final pulse width values in microseconds (written by ISRs, read by API)
 volatile uint16_t steering_us = 1500, throttle_us = 1500, reverse_us = 1500;
-volatile uint16_t takeover_us = 1500, max_throttle_us = 1500;
+volatile uint16_t takeover_us = 1500;
 
 // Timer4 Input Capture ISR (Throttle)
 ISR(TIMER4_CAPT_vect) {
@@ -102,25 +98,6 @@ ISR(INT5_vect) {
   }
 }
 
-// External interrupt ISR for Max Throttle (INT3) 
-ISR(INT3_vect) {
-  max_throttle_last_activity = millis(); // Update activity timestamp
-  uint16_t now = TCNT1;                  // Use Timer1 for timestamp
-  
-  if ((EICRA & (_BV(ISC31) | _BV(ISC30))) == (_BV(ISC31) | _BV(ISC30))) {  // was configured for RISING
-    max_throttle_t_rise = now;
-    // Switch to falling edge
-    EICRA &= ~(_BV(ISC31) | _BV(ISC30));
-    EICRA |= _BV(ISC31);  // falling edge (10)
-  } else {                              // was configured for FALLING
-    uint16_t counts = (uint16_t)(now - max_throttle_t_rise);
-    max_throttle_us = (counts + 1) >> 1; // Convert to microseconds immediately
-    // Switch back to rising edge  
-    EICRA &= ~(_BV(ISC31) | _BV(ISC30));
-    EICRA |= _BV(ISC31) | _BV(ISC30);  // rising edge (11)
-  }
-}
-
 void setup_receiver() {
   // Configure all input pins
   pinMode(STEERING_PIN, INPUT);
@@ -135,7 +112,6 @@ void setup_receiver() {
   throttle_last_activity = expired;
   reverse_last_activity = expired;
   takeover_last_activity = expired;
-  max_throttle_last_activity = expired;
   
   // Timer1: Reference timer for external interrupts (prescaler 8)
   TCCR1A = 0;
@@ -169,12 +145,6 @@ void setup_receiver() {
   EIFR = _BV(INTF5);
   EIMSK |= _BV(INT5);
   
-  // INT3 (pin 18) - Max Throttle
-  EICRA &= ~(_BV(ISC31) | _BV(ISC30));
-  EICRA |= _BV(ISC31) | _BV(ISC30);  // rising edge
-  EIFR = _BV(INTF3);
-  EIMSK |= _BV(INT3);
-  
   sei();
 }
 
@@ -189,10 +159,6 @@ uint16_t get_raw_throttle() {
 
 uint16_t get_raw_reverse() {
   return reverse_us;
-}
-
-uint16_t get_raw_max_throttle() {
-  return max_throttle_us;
 }
 
 uint16_t get_raw_takeover() {
@@ -226,23 +192,18 @@ bool get_reverse() {
   return reverse_us > 1500;  // true if >1500us, false if <=1500us
 }
 
-uint8_t get_max_throttle() {
-  return safe_map_to_255(max_throttle_us, 1100, 1900, false);
-}
-
 bool get_takeover() {
   return takeover_us < 1600;  // true if <1600us (RC mode), false if >=1600us (kids mode)
 }
 
-// TX status - returns true only if ALL channels are active
+// TX status - returns true only if all 4 control channels are active
 bool is_tx_on() {
   unsigned long now = millis();
   noInterrupts();
   bool all_active = (now - steering_last_activity) < PWM_TIMEOUT_MS &&
                     (now - throttle_last_activity) < PWM_TIMEOUT_MS &&
                     (now - reverse_last_activity) < PWM_TIMEOUT_MS &&
-                    (now - takeover_last_activity) < PWM_TIMEOUT_MS &&
-                    (now - max_throttle_last_activity) < PWM_TIMEOUT_MS;
+                    (now - takeover_last_activity) < PWM_TIMEOUT_MS;
   
   // Refresh individual timestamps when inactive to handle millis() rollover
   if (!all_active) {
@@ -255,10 +216,7 @@ bool is_tx_on() {
       reverse_last_activity = expired;
     if ((now - takeover_last_activity) >= PWM_TIMEOUT_MS)
       takeover_last_activity = expired;
-    if ((now - max_throttle_last_activity) >= PWM_TIMEOUT_MS)
-      max_throttle_last_activity = expired;
   }
   interrupts();
   return all_active;
 }
-

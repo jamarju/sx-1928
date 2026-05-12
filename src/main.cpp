@@ -54,7 +54,7 @@ void loop() {
   bool takeover_active = get_takeover();
   bool reverse_switch = get_reverse();
   uint8_t ramped_speed = get_ramped_speed();
-  int16_t max_throttle = get_max_throttle();
+  int16_t max_throttle = throttle;
   
   // Read onboard control states
   bool rev_pedal = get_rev_pedal();

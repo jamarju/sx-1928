@@ -16,7 +16,7 @@ I replaced the original controller with an Arduino Mega 2560 Pro and a Futaba R6
 - Fine-grained speed and steering control using the transmitter's analog sticks.
 - Configurable acceleration/deceleration profiles prevent sudden speed changes.
 - Kid/RC mode switching: the car can be controlled by the transmitter or by the kids using the pedal.
-- Adjustable maximum pedal speed via one of the transmitter's analog knobs.
+- Adjustable maximum pedal speed via the transmitter throttle stick.
 - RC arming procedure prevents the car from moving unless authorized by the parent.
 
 # Hardware Setup
@@ -43,7 +43,7 @@ Alternatively, 2x 24V 40A 5-pin relays can be used instead of 1x each.
 | **CH1**          | Steering      | **Pin 48**  | Input Capture    | Analog      | 1100-1900μs → 0-255 |
 | **CH3**          | Throttle      | **Pin 49**  | Input Capture    | Analog      | 1100-1900μs → 255-0 (inverted) |
 | **CH5**          | Reverse       | **Pin 2**   | External Int     | Digital     | >1500μs = ON, ≤1500μs = OFF |
-| **CH6**          | Max Throttle  | **Pin 18**  | External Int     | Analog      | 1100-1900μs → 0-255 |
+| **CH6**          | Wired, ignored | **Pin 18**  | Not read         | Analog      | Unused |
 | **CH7**          | Takeover      | **Pin 3**   | External Int     | Digital     | ≤1500μs = ON, >1500μs = OFF |
 
 ## Motor Control Output Pins
